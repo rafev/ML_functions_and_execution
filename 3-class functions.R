@@ -20,7 +20,7 @@ my_1way.mods = function(one_way_modlist) {
     Net.fit = caret::train(x = train_grp[, module_df[module_df$colors == i, 1]],
                            y = train_pheno[[covariate_interest]],
                            method = "glmnet",
-                           trCN = cctrl1,
+                           trControl = cctrl1,
                            metric = "Mean_Balanced_Accuracy",
                            tuneGrid = expand.grid(.alpha = seq(.05, 1, length = 15),
                                                   .lambda = seq(0.001, 1, 0.005)),
@@ -132,7 +132,7 @@ my_seq_1way.mods = function(one_way_modlist) {
     Net.fit = caret::train(x = train_grp[, module_df[module_df$colors == i, 1]],
                            y = train_pheno[[covariate_interest]],
                            method = "glmnet",
-                           trCN = cctrl1,
+                           trControl = cctrl1,
                            metric = "Mean_Balanced_Accuracy",
                            tuneGrid = expand.grid(.alpha = seq(.05, 1, length = 15),
                                                   .lambda = seq(0.001, 1, 0.005)),
@@ -244,7 +244,7 @@ my_1way.PCA.mods = function(one_way_modlist) {
     Net.fit = caret::train(x = train_grp[[i]][["x"]],
                            y = train_pheno[[covariate_interest]],
                            method = "glmnet",
-                           trCN = cctrl1,
+                           trControl = cctrl1,
                            metric = "Mean_Balanced_Accuracy",
                            tuneGrid = expand.grid(.alpha = seq(.05, 1, length = 15),
                                                   .lambda = seq(0.001, 1, 0.005)),
@@ -354,7 +354,7 @@ my_RF_1way.mods = function(one_way_modlist) {
     Net.fit = caret::train(x = train_grp[, module_df[module_df$colors == i, 1]],
                            y = train_pheno[[covariate_interest]],
                            method = "rf",
-                           trCN = cctrl1,
+                           trControl = cctrl1,
                            metric = "Mean_Balanced_Accuracy",
                            family = "multinomial",
                            type.multinomial = "grouped",
@@ -434,12 +434,13 @@ my_seq.RF_1way.mods = function(one_way_modlist) {
   res_out = list()
   p = progressor(along = one_way_modlist)
   for (i in one_way_modlist) {
+    cat("\n",i,"\n")
     # Run Random Forest
     set.seed(32)
     Net.fit = caret::train(x = train_grp[, module_df[module_df$colors == i, 1]],
                            y = train_pheno[[covariate_interest]],
                            method = "rf",
-                           trCN = cctrl1,
+                           trControl = cctrl1,
                            tuneLength = 10,
                            metric = "Mean_Balanced_Accuracy",
                            family = "multinomial",
@@ -530,7 +531,7 @@ my_2way.mods = function(two_way_modlist) {
     ],
     y = train_pheno[[covariate_interest]],
     method = "glmnet",
-    trCN = cctrl1,
+    trControl = cctrl1,
     metric = "Mean_Balanced_Accuracy",
     tuneGrid = expand.grid(.alpha = seq(.05, 1, length = 15),
                            .lambda = seq(0.001, 1, 0.005)),
@@ -653,7 +654,7 @@ EH_2way.mods = function(two_way_modlist) {
                                                      selected_columns)],
     y = train_pheno[[covariate_interest]],
     method = "glmnet",
-    trCN = cctrl1,
+    trControl = cctrl1,
     metric = "Mean_Balanced_Accuracy",
     tuneGrid = expand.grid(.alpha = seq(.05, 1, length = 15),
                            .lambda = seq(0.001, 1, 0.005)),
@@ -784,7 +785,7 @@ my_3way.mods = function(three_way_modlist) {
     ],
     y = train_pheno[[covariate_interest]],
     method = "glmnet",
-    trCN = cctrl1,
+    trControl = cctrl1,
     metric = "Mean_Balanced_Accuracy",
     tuneGrid = expand.grid(.alpha = seq(.05, 1, length = 15),
                            .lambda = seq(0.001, 1, 0.005)),
@@ -910,7 +911,7 @@ EH_3way.mods = function(three_way_modlist) {
                                                      selected_columns)],
     y = train_pheno[[covariate_interest]],
     method = "glmnet",
-    trCN = cctrl1,
+    trControl = cctrl1,
     metric = "Mean_Balanced_Accuracy",
     tuneGrid = expand.grid(.alpha = seq(.05, 1, length = 15),
                            .lambda = seq(0.001, 1, 0.005)),
@@ -1037,11 +1038,12 @@ ML_suite_scan = function(modules_final, covariate_interest, id_column) {
   res_out_all = list()
   
   for (i in modules_final) {
-    cat("\nWorking on module", i,"\n")
+    cat("\nWorking on module:", i,"\n")
     
     train_grp.B_SVM.DF = merge(as.data.frame(train_pheno[,c(id_column, covariate_interest), with = F]),
                                as.data.frame(train_grp[, module_df[module_df$colors == i, 1]]),
                                by.x = id_column, by.y = 0)
+    colnames(train_grp.B_SVM.DF)[2] = "phenotype"
     
     # Bagged CART
     cat("Bagged CART\n")
@@ -1050,7 +1052,7 @@ ML_suite_scan = function(modules_final, covariate_interest, id_column) {
                                 y = train_pheno[[covariate_interest]],
                                 family = "multinomial",
                                 type.multinomial = "grouped",
-                                maximize = T,
+                                metric = "Mean_Balanced_Accuracy", maximize = T,
                                 method = "treebag", trControl = cctrl1)
     
     # RF
@@ -1060,18 +1062,8 @@ ML_suite_scan = function(modules_final, covariate_interest, id_column) {
                            y = train_pheno[[covariate_interest]],
                            family = "multinomial",
                            type.multinomial = "grouped",
-                           maximize = T,
+                           metric = "Mean_Balanced_Accuracy", maximize = T,
                            method = "rf", trControl = cctrl1)
-    
-    # GBM - Stochastic Gradient Boosting
-    cat("GBM\n")
-    set.seed(1234)
-    fit.gbm <- caret::train(x = train_grp[, module_df[module_df$colors == i, 1]],
-                            y = train_pheno[[covariate_interest]],
-                            family = "multinomial",
-                            type.multinomial = "grouped",
-                            maximize = T,
-                            method = "gbm",trControl = cctrl1)
     
     # C5.0
     cat("C5.0\n")
@@ -1080,18 +1072,8 @@ ML_suite_scan = function(modules_final, covariate_interest, id_column) {
                             y = train_pheno[[covariate_interest]],
                             family = "multinomial",
                             type.multinomial = "grouped",
-                            maximize = T,
+                            metric = "Mean_Balanced_Accuracy", maximize = T,
                             method = "C5.0", trControl = cctrl1)
-    
-    # LG - Logistic Regression
-    cat("LG\n")
-    set.seed(1234)
-    fit.glm <- caret::train(x = train_grp[, module_df[module_df$colors == i, 1]],
-                            y = train_pheno[[covariate_interest]],
-                            family = "multinomial",
-                            type.multinomial = "grouped",
-                            maximize = T,
-                            method="glm", trControl=cctrl1)
     
     # LDA - Linear Discriminate Analysis
     cat("LDA\n")
@@ -1100,7 +1082,7 @@ ML_suite_scan = function(modules_final, covariate_interest, id_column) {
                             y = train_pheno[[covariate_interest]],
                             family = "multinomial",
                             type.multinomial = "grouped",
-                            maximize = T,
+                            metric = "Mean_Balanced_Accuracy", maximize = T,
                             method="lda", trControl=cctrl1)
     
     # GLMNET - Regularized Logistic Regression
@@ -1114,27 +1096,17 @@ ML_suite_scan = function(modules_final, covariate_interest, id_column) {
                                                       .lambda = seq(0.001, 1, 0.005)),
                                family = "multinomial",
                                type.multinomial = "grouped",
-                               maximize = T)
-    
+                               metric = "Mean_Balanced_Accuracy", maximize = T)
+                               
     # KNN - k-Nearest Neighbors 
     cat("KNN\n")
     set.seed(1234)
     fit.knn <- caret::train(x = train_grp[, module_df[module_df$colors == i, 1]],
                             y = train_pheno[[covariate_interest]],
-                            family = "multinomial",
-                            type.multinomial = "grouped",
-                            maximize = T,
-                            method="knn", trControl=cctrl1)
-    
-    # CART - Classification and Regression Trees (CART), 
-    cat("CART\n")
-    set.seed(1234)
-    fit.cart <- caret::train(x = train_grp[, module_df[module_df$colors == i, 1]],
-                             y = train_pheno[[covariate_interest]],
-                             family = "multinomial",
-                             type.multinomial = "grouped",
-                             maximize = T,
-                             method="rpart", trControl=cctrl1)
+                            metric = "Mean_Balanced_Accuracy", maximize = T,
+                            method="knn",
+                            tuneGrid = data.frame(k = seq(11,85,by=2)),
+                            trControl=cctrl1)
     
     # SVM Linear - Support Vector Machine, 
     set.seed(1234)
@@ -1142,6 +1114,7 @@ ML_suite_scan = function(modules_final, covariate_interest, id_column) {
     fit.svmLin <- train(phenotype~.,
                         data = train_grp.B_SVM.DF[,2:ncol(train_grp.B_SVM.DF)],
                         method="svmLinear", trControl=cctrl1,
+                        metric = "Mean_Balanced_Accuracy", maximize = T,
                         tuneGrid = expand.grid(C = seq(0, 2, length = 20)))
     
     # SVM Radial - Support Vector Machine, 
@@ -1150,103 +1123,60 @@ ML_suite_scan = function(modules_final, covariate_interest, id_column) {
     fit.svmRad <- train(phenotype~.,
                         data = train_grp.B_SVM.DF[,2:ncol(train_grp.B_SVM.DF)],
                         method="svmRadial", trControl=cctrl1,
+                        metric = "Mean_Balanced_Accuracy", maximize = T,
                         tuneLength = 20)
     
     
     # Colate models into single object
     ML_models = list("Bagged CART" = fit.treebag,
                      "Random Forest" = fit.rf,
-                     "GBM" = fit.gbm,
                      "C5.0" = fit.c50,
-                     "LG" = fit.glm,
                      "LDA" = fit.lda,
                      "GLMNET" = fit.glmnet,
                      "KNN" = fit.knn,
-                     "CART" = fit.cart,
                      "Linear SVM" = fit.svmLin,
                      "Radial SVM" = fit.svmRad
     )
-    
+    rm(fit.treebag, fit.rf, fit.c50, fit.lda, fit.glmnet, fit.knn, fit.svm.Lin, fit.svmRad)
+    gc()
     
     
     ## ------------------------------
     # Assess training results
     ## ------------------------------
     
-    ML.ROC_training = sapply(names(ML_models), function(j){
+    ML.Bal.Acc_training = sapply(names(ML_models), function(j){
       
       Prediction.train = predict(object = ML_models[[j]],
-                                 newdata = train_grp[, module_df[module_df$colors == i, 1]],
-                                 type = "prob")
+                                 newdata = train_grp[, module_df[module_df$colors == i, 1]])
       
-      # Calculate trainATION AUC values
-      train.roc.CN = pROC::roc(ifelse(train_pheno[[covariate_interest]] == "CN",
-                                      "CN", # IF MATCH response
-                                      "non-CN"), # ELSE response
-                               Prediction.train[, "CN"])
+      out = caret::confusionMatrix(Prediction.train,
+                                   train_pheno$disease.status.abv)
       
-      train.roc.MCI = pROC::roc(ifelse(train_pheno[[covariate_interest]] == "MCI",
-                                       "MCI", # IF MATCH response
-                                       "non-MCI"), # ELSE response
-                                Prediction.train[, "MCI"])
-      
-      train.roc.AD = pROC::roc(ifelse(train_pheno[[covariate_interest]] == "AD",
-                                      "AD", # IF MATCH response
-                                      "non-AD"), # ELSE response
-                               Prediction.train[, "AD"])
-      
-      
-      train.AUC = mean(c(train.roc.CN$auc, train.roc.MCI$auc, train.roc.AD$auc))
-      
-      out = list(train.AUC = train.AUC,
-                 train.roc.CN = train.roc.CN,
-                 train.roc.MCI = train.roc.MCI,
-                 train.roc.AD = train.roc.AD)
       return(out)
-    }, simplify = F, USE.NAMES = T)
-    
+    }, simplify = F, USE.NAMES = T)    
     
     
     ## ------------------------------
     # Assess validation results
     ## ------------------------------
 
-    ML.ROC_validation = sapply(names(ML_models), function(j){
+    ML.Bal.Acc_validation = sapply(names(ML_models), function(j){
       
       Prediction.valid = predict(object = ML_models[[j]],
-                                 newdata = valid_grp[, module_df[module_df$colors == i, 1]],
-                                 type = "prob")
+                                 newdata = valid_grp[, module_df[module_df$colors == i, 1]])
       
-      # Calculate VALIDATION AUC values
-      valid.roc.CN = pROC::roc(ifelse(valid_pheno[[covariate_interest]] == "CN",
-                                      "CN", # IF MATCH response
-                                      "non-CN"), # ELSE response
-                               Prediction.valid[, "CN"])
+      out = caret::confusionMatrix(Prediction.valid,
+                                  valid_pheno$disease.status.abv)
       
-      valid.roc.MCI = pROC::roc(ifelse(valid_pheno[[covariate_interest]] == "MCI",
-                                       "MCI", # IF MATCH response
-                                       "non-MCI"), # ELSE response
-                                Prediction.valid[, "MCI"])
-      
-      valid.roc.AD = pROC::roc(ifelse(valid_pheno[[covariate_interest]] == "AD",
-                                      "AD", # IF MATCH response
-                                      "non-AD"), # ELSE response
-                               Prediction.valid[, "AD"])
-      
-      
-      valid.AUC = mean(c(valid.roc.CN$auc, valid.roc.MCI$auc, valid.roc.AD$auc))
-      
-      out = list(valid.AUC = valid.AUC,
-                 valid.roc.CN = valid.roc.CN,
-                 valid.roc.MCI = valid.roc.MCI,
-                 valid.roc.AD = valid.roc.AD)
       return(out)
     }, simplify = F, USE.NAMES = T)
     
     
-    res_out_all = list(ML_models = ML_models,
-                       ML.ROC_training = ML.ROC_training,
-                       ML.ROC_validation = ML.ROC_validation)
+    res_out_all[[i]] = list(ML_models = ML_models,
+                            ML.Bal.Acc_training = ML.Bal.Acc_training,
+                            ML.Bal.Acc_validation = ML.Bal.Acc_validation)
+                       
   }
-  
+  return(res_out_all)
 }
